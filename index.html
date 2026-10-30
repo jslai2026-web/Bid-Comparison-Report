@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Bidder Comparison</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#667085;--bd:#e2e5ea;--ac:#2557d6;--ok:#157f3b;--bad:#c0262d;--warn:#b26a00;--hd:#eef1f6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1a1e24;--tx:#e8eaed;--mut:#9aa3b0;--bd:#2d333b;--ac:#6b93f5;--ok:#4cc27a;--bad:#f0777c;--warn:#e0a040;--hd:#222831;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1a1e24;--tx:#e8eaed;--mut:#9aa3b0;--bd:#2d333b;--ac:#6b93f5;--ok:#4cc27a;--bad:#f0777c;--warn:#e0a040;--hd:#222831;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}h2{font-size:16px;margin:0 0 10px}
+.sub{color:var(--mut);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+.w{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{border-bottom:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:middle}
+th{background:var(--hd);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right}
+input,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:4px 6px;width:100%;min-width:70px}
+input.nm{font-weight:600}
+.sec td{background:var(--hd);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.tot td{font-weight:700;background:var(--hd)}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid currentColor}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;min-width:70px}.bar i{display:block;height:100%;background:var(--ac)}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.cv{position:relative;height:280px}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:6px;padding:5px 12px;cursor:pointer;margin-right:6px}
+button:hover{border-color:var(--ac)}
+button.x{padding:2px 9px;margin:0;color:var(--bad)}
+textarea.rs{min-height:0;height:46px;min-width:150px;margin-top:4px;font:12px system-ui,sans-serif}
+textarea{width:100%;min-height:90px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:6px}
+ul{margin:6px 0 0;padding-left:20px}li{margin:3px 0}
+.win{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+@media print{button{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<main>
+<h1>Bidder Comparison &amp; Evaluation</h1>
+<p class="sub">Edit any white cell: bidder names, item names, bid data, weights and scores (0–10). Use the + buttons to add bid data items, compliance requirements or criteria, and × to remove one. Price score is calculated automatically (lowest compliant bid earns full marks). Everything below updates live.</p>
+
+<div class="card">
+<button onclick="addB()">+ Add bidder</button><button onclick="remB()">− Remove last</button><button onclick="window.print()">Print / save PDF</button>
+</div>
+
+<div class="card"><h2>Secure save &amp; restore (encrypted)</h2>
+<p class="sub" style="margin-bottom:8px">Nothing you type leaves this page and nothing is stored automatically, so closing the tab erases it. To keep your work, encrypt it with a passphrase. The encrypted text is useless without the passphrase (AES-256-GCM, key derived with PBKDF2, 600,000 rounds). Never keep real bid data anywhere unencrypted.</p>
+<input id="pp" type="password" autocomplete="off" placeholder="Passphrase (12+ characters)" style="max-width:340px;margin-bottom:8px">
+<div><button onclick="encData()">Encrypt current data</button><button onclick="decData()">Decrypt &amp; load</button><button onclick="wipe()">Clear everything</button></div>
+<textarea id="bx" spellcheck="false" placeholder="Encrypted text appears here. To restore, paste it here, enter the passphrase and press Decrypt &amp; load." style="margin-top:8px"></textarea>
+<div id="sm" style="margin-top:6px"></div></div>
+
+<div class="card"><h2>1. Bid data &amp; compliance</h2><div class="w"><table id="t1"></table></div></div>
+<div class="card"><h2>2. Weighted scoring matrix</h2><div class="w"><table id="t2"></table></div></div>
+
+<div class="card"><h2>3. Charts</h2>
+<div class="g">
+<div><div class="cv"><canvas id="c1"></canvas></div></div>
+<div><div class="cv"><canvas id="c2"></canvas></div></div>
+<div><div class="cv"><canvas id="c3"></canvas></div></div>
+<div><div class="cv"><canvas id="c4"></canvas></div></div>
+</div></div>
+
+<div class="card"><h2>4. Summary</h2><div id="sum"></div></div>
+<div class="card"><h2>5. Recommendations</h2><div id="rec"></div></div>
+</main>
+
+<script>
+var COL=['#2557d6','#e07a1f','#1f9d6b','#b03fb5','#d1432f','#3a9bc1','#8a8f1c','#6b6f7a'];
+var crit=[
+ {n:'Technical approach & methodology',w:20},{n:'Relevant experience',w:15},{n:'Project schedule',w:10},
+ {n:'Safety record',w:5},{n:'Quality assurance',w:5},{n:'Financial capacity',w:5},{n:'References',w:5},{n:'Local / Yukon content',w:5}];
+var wP=30;
+var fields=[
+ {k:'price',l:'Total bid price ($)',t:'num'},{k:'days',l:'Completion time (calendar days)',t:'num'},
+ {k:'warr',l:'Warranty (months)',t:'num'},{k:'yrs',l:'Years in business',t:'num'},
+ {k:'sim',l:'Similar projects completed (#)',t:'num'},{k:'refs',l:'References provided (#)',t:'num'},
+ {k:'lti',l:'Lost-time incidents (last 3 yrs)',t:'num'},{k:'pay',l:'Payment terms',t:'txt'}];
+var mand=[{k:'sec',l:'Bid security / deposit'},{k:'add',l:'Addenda acknowledged'},{k:'ins',l:'Insurance certificate'},{k:'bond',l:'Bonding / surety letter'},{k:'form',l:'Forms signed & complete'}];
+var bd=[
+ {name:'Bidder A',price:1245000,days:140,warr:24,yrs:22,sim:9,refs:4,lti:0,pay:'Net 30',sec:1,add:1,ins:1,bond:1,form:1,s:[8,8,7,9,8,8,8,6]},
+ {name:'Bidder B',price:1180000,days:160,warr:12,yrs:11,sim:5,refs:3,lti:2,pay:'Net 45',sec:1,add:1,ins:1,bond:1,form:1,s:[7,6,6,6,7,7,6,8]},
+ {name:'Bidder C',price:1320000,days:120,warr:36,yrs:30,sim:14,refs:5,lti:0,pay:'Net 30',sec:1,add:1,ins:1,bond:1,form:1,s:[9,9,9,9,9,8,9,5]},
+ {name:'Bidder D',price:1095000,days:150,warr:12,yrs:6,sim:2,refs:2,lti:1,pay:'Net 60',sec:1,add:0,ins:1,bond:1,form:1,s:[5,4,6,5,5,5,4,9]}];
+var ch={};
+function $(i){return document.getElementById(i)}
+function fm(n){return '$'+Math.round(n).toLocaleString('en-CA')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+function build(){bd.forEach(function(b){if(!b.r)b.r=[];while(b.r.length<crit.length)b.r.push('')});
+ var h='<tr><th>Item</th>';
+ bd.forEach(function(b,j){h+='<th><input class="nm" value="'+esc(b.name)+'" oninput="bd['+j+'].name=this.value;upd()"></th>'});
+ h+='</tr><tr class="sec"><td colspan="'+(bd.length+1)+'">Bid data</td></tr>';
+ fields.forEach(function(f){h+='<tr><td>'+lbl('fields',fields.indexOf(f),f.l)+'</td>';bd.forEach(function(b,j){
+  h+='<td><input '+(f.t=='num'?'type="number" step="any"':'')+' value="'+esc(b[f.k])+'" oninput="bd['+j+'].'+f.k+'='+(f.t=='num'?'parseFloat(this.value)||0':'this.value')+';upd()"></td>'});h+='</tr>'});
+ h+='<tr><td colspan="'+(bd.length+1)+'"><button onclick="addF(1)">+ Add number item</button><button onclick="addF(0)">+ Add text item</button></td></tr>';
+ h+='<tr class="sec"><td colspan="'+(bd.length+1)+'">Mandatory compliance</td></tr>';
+ mand.forEach(function(m){h+='<tr><td>'+lbl('mand',mand.indexOf(m),m.l)+'</td>';bd.forEach(function(b,j){
+  h+='<td><select onchange="bd['+j+'].'+m.k+'=+this.value;upd()"><option value="1"'+(b[m.k]?' selected':'')+'>Yes</option><option value="0"'+(b[m.k]?'':' selected')+'>No</option></select></td>'});h+='</tr>'});
+ h+='<tr><td colspan="'+(bd.length+1)+'"><button onclick="addM()">+ Add compliance requirement</button></td></tr>';
+ h+='<tr class="tot"><td>Compliance status</td>';bd.forEach(function(b,j){h+='<td id="cs'+j+'"></td>'});h+='</tr>';
+ h+='<tr><td>Price vs lowest bid</td>';bd.forEach(function(b,j){h+='<td id="pv'+j+'"></td>'});h+='</tr>';
+ h+='<tr><td>Price vs average bid</td>';bd.forEach(function(b,j){h+='<td id="pa'+j+'"></td>'});h+='</tr>';
+ $('t1').innerHTML=h;
+
+ h='<tr><th>Criterion</th><th class="n">Weight</th>';
+ bd.forEach(function(b,j){h+='<th class="n" id="h2'+j+'"></th>'});h+='</tr>';
+ h+='<tr><td>Price (auto: lowest ÷ bid × weight)</td><td><input type="number" value="'+wP+'" oninput="wP=parseFloat(this.value)||0;upd()"></td>';
+ bd.forEach(function(b,j){h+='<td class="n" id="ps'+j+'"></td>'});h+='</tr>';
+ crit.forEach(function(c,i){h+='<tr><td>'+lbl('crit',i,c.n)+'</td><td><input type="number" value="'+c.w+'" oninput="crit['+i+'].w=parseFloat(this.value)||0;upd()"></td>';
+  bd.forEach(function(b,j){h+='<td><input type="number" min="0" max="10" step="0.5" value="'+b.s[i]+'" oninput="bd['+j+'].s['+i+']=Math.min(10,Math.max(0,parseFloat(this.value)||0));upd()" title="Score 0–10"><textarea class="rs" placeholder="Reason for this score" oninput="bd['+j+'].r['+i+']=this.value;upd()">'+esc(b.r[i])+'</textarea></td>'});h+='</tr>'});
+ h+='<tr><td colspan="'+(bd.length+2)+'"><button onclick="addC()">+ Add criterion</button></td></tr>';
+ h+='<tr class="tot"><td>Total weight</td><td class="n" id="tw"></td>'+bd.map(function(){return '<td></td>'}).join('')+'</tr>';
+ h+='<tr class="tot"><td colspan="2">Weighted total (points)</td>'+bd.map(function(b,j){return '<td class="n" id="tp'+j+'"></td>'}).join('')+'</tr>';
+ h+='<tr class="tot"><td colspan="2">Score %</td>'+bd.map(function(b,j){return '<td class="n" id="tc'+j+'"></td>'}).join('')+'</tr>';
+ h+='<tr><td colspan="2">Visual</td>'+bd.map(function(b,j){return '<td><div class="bar"><i id="bv'+j+'"></i></div></td>'}).join('')+'</tr>';
+ h+='<tr class="tot"><td colspan="2">Rank (compliant bids only)</td>'+bd.map(function(b,j){return '<td class="n" id="rk'+j+'"></td>'}).join('')+'</tr>';
+ $('t2').innerHTML=h;
+ upd();
+}
+
+function calc(){
+ var ok=bd.map(function(b){return mand.every(function(m){return b[m.k]})&&b.price>0});
+ var pool=bd.filter(function(b,j){return ok[j]});if(!pool.length)pool=bd.filter(function(b){return b.price>0});
+ var low=Math.min.apply(null,pool.map(function(b){return b.price}));
+ var prices=bd.filter(function(b){return b.price>0}).map(function(b){return b.price});
+ var avg=prices.reduce(function(a,b){return a+b},0)/(prices.length||1);
+ var tw=wP+crit.reduce(function(a,c){return a+c.w},0);
+ var R=bd.map(function(b,j){
+  var ps=b.price>0?low/b.price*wP:0;
+  var cp=crit.map(function(c,i){return b.s[i]/10*c.w});
+  var tot=ps+cp.reduce(function(a,x){return a+x},0);
+  return{j:j,ok:ok[j],ps:ps,cp:cp,tot:tot,pct:tw?tot/tw*100:0}});
+ var ranked=R.filter(function(r){return r.ok}).sort(function(a,b){return b.tot-a.tot});
+ ranked.forEach(function(r,i){r.rank=i+1});
+ return{R:R,ranked:ranked,low:low,avg:avg,tw:tw}
+}
+
+function upd(){
+ var D=calc(),R=D.R;
+ $('tw').textContent=D.tw+(D.tw==100?'':' ⚠ not 100');
+ R.forEach(function(r,j){var b=bd[j];
+  $('cs'+j).innerHTML=r.ok?'<span class="pill ok">Compliant</span>':'<span class="pill bad">Non-compliant</span>';
+  $('pv'+j).textContent=b.price>0?(b.price==D.low?'Lowest':'+'+((b.price/D.low-1)*100).toFixed(1)+'%'):'—';
+  var pa=b.price>0?(b.price/D.avg-1)*100:0;$('pa'+j).innerHTML=b.price>0?'<span class="'+(pa<-15?'bad':pa>15?'warn':'')+'">'+(pa>=0?'+':'')+pa.toFixed(1)+'%</span>':'—';
+  $('h2'+j).textContent=b.name;
+  $('ps'+j).textContent=r.ps.toFixed(1);
+  $('tp'+j).textContent=r.tot.toFixed(1);$('tc'+j).textContent=r.pct.toFixed(1)+'%';
+  $('bv'+j).style.width=Math.min(100,r.pct)+'%';
+  var c=$('rk'+j);c.textContent=r.ok?('#'+r.rank):'DQ';c.className='n '+(r.ok&&r.rank==1?'ok':r.ok?'':'bad');
+ });
+ charts(D);summary(D);
+}
+
+function mk(id,cfg){if(ch[id]){ch[id].destroy()}ch[id]=new Chart($(id),cfg)}
+function charts(D){
+ var tc=getComputedStyle(document.documentElement).getPropertyValue('--tx').trim(),gc=getComputedStyle(document.documentElement).getPropertyValue('--bd').trim();
+ Chart.defaults.color=tc;Chart.defaults.borderColor=gc;
+ var names=bd.map(function(b){return b.name});
+ var op={responsive:true,maintainAspectRatio:false};
+ var all=['Price'].concat(crit.map(function(c){return c.n}));
+ mk('c1',{type:'bar',data:{labels:names,datasets:all.map(function(n,i){return{label:n,backgroundColor:COL[i%8],data:D.R.map(function(r){return +(i==0?r.ps:r.cp[i-1]).toFixed(2)})}})},
+  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'Weighted points'}}},plugins:{title:{display:true,text:'Score build-up by criterion'},legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
+ mk('c2',{type:'bar',data:{labels:names,datasets:[{label:'Score %',backgroundColor:COL,data:D.R.map(function(r){return +r.pct.toFixed(1)})}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100}},plugins:{legend:{display:false},title:{display:true,text:'Overall score (%)'}}}});
+ mk('c3',{type:'bar',data:{labels:names,datasets:[{label:'Bid price',backgroundColor:COL,data:bd.map(function(b){return b.price})}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Bid price ($)'}}}});
+ mk('c4',{type:'radar',data:{labels:crit.map(function(c){return c.n.split(' ')[0]+' '+(c.n.split(' ')[1]||'')}),datasets:bd.map(function(b,j){return{label:b.name,data:b.s,borderColor:COL[j%8],backgroundColor:COL[j%8]+'22',pointRadius:2}})},
+  options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:10,ticks:{display:false}}},plugins:{title:{display:true,text:'Criteria profile (0–10)'},legend:{position:'bottom',labels:{boxWidth:10}}}}});
+}
+
+function summary(D){
+ var R=D.R,rk=D.ranked,s='';
+ s+='<div class="w"><table style="min-width:520px"><tr><th>Rank</th><th>Bidder</th><th class="n">Bid price</th><th class="n">vs lowest</th><th class="n">Points</th><th class="n">Score %</th><th>Strongest</th><th>Weakest</th></tr>';
+ function sw(r){var a=['Price'].concat(crit.map(function(c){return c.n})),v=[bd[r.j].price>0?D.low/bd[r.j].price*10:0].concat(bd[r.j].s);
+  var mx=v.indexOf(Math.max.apply(null,v)),mn=v.indexOf(Math.min.apply(null,v));return[a[mx],a[mn],v[mn]]}
+ rk.concat(R.filter(function(r){return !r.ok})).forEach(function(r,i){var b=bd[r.j],x=sw(r);
+  s+='<tr'+(r.ok&&r.rank==1?' class="win"':'')+'><td>'+(r.ok?r.rank:'DQ')+'</td><td><b>'+esc(b.name)+'</b></td><td class="n">'+fm(b.price)+'</td><td class="n">'+(b.price==D.low?'Lowest':'+'+((b.price/D.low-1)*100).toFixed(1)+'%')+'</td><td class="n">'+r.tot.toFixed(1)+'</td><td class="n">'+r.pct.toFixed(1)+'%</td><td>'+esc(x[0])+'</td><td>'+esc(x[1])+'</td></tr>'});
+ s+='</table></div>';
+ s+='<h3 style="font-size:14px;margin:14px 0 6px">Scoring rationale</h3><div class="w"><table style="min-width:520px"><tr><th>Criterion (weight)</th>'+bd.map(function(b){return '<th>'+esc(b.name)+'</th>'}).join('')+'</tr>'+crit.map(function(c,i){return '<tr><td>'+esc(c.n)+' ('+c.w+')</td>'+bd.map(function(b){return '<td><b>'+b.s[i]+'/10</b> '+(b.r[i]?esc(b.r[i]):'<span class="warn">no reason recorded</span>')+'</td>'}).join('')+'</tr>'}).join('')+'</table></div>';
+ var ln=[];
+ if(rk.length){var t=rk[0],tb=bd[t.j];
+  ln.push('<b>'+esc(tb.name)+'</b> ranks first with <b>'+t.pct.toFixed(1)+'%</b> ('+t.tot.toFixed(1)+' of '+D.tw+' pts).');
+  if(rk[1])ln.push('Lead over second place ('+esc(bd[rk[1].j].name)+'): <b>'+(t.tot-rk[1].tot).toFixed(1)+' pts</b>.');
+  ln.push('Compliant bids range from '+fm(Math.min.apply(null,rk.map(function(r){return bd[r.j].price})))+' to '+fm(Math.max.apply(null,rk.map(function(r){return bd[r.j].price})))+'; average of all bids '+fm(D.avg)+'.');
+ }
+ var dq=R.filter(function(r){return !r.ok});
+ if(dq.length)ln.push(dq.length+' bid(s) fail mandatory compliance: '+dq.map(function(r){var b=bd[r.j];return '<b>'+esc(b.name)+'</b> (missing '+mand.filter(function(m){return !b[m.k]}).map(function(m){return esc(m.l.toLowerCase())}).join(', ')+')'}).join('; ')+'.');
+ $('sum').innerHTML=s+'<ul>'+ln.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>';
+
+ var rc=[];
+ if(!rk.length){rc.push('No compliant bids. Review mandatory requirements, consider rejecting all bids and re-tendering.')}
+ else{var t=rk[0],tb=bd[t.j],x=sw(t);
+  rc.push('<b>Recommended award: '+esc(tb.name)+'</b> at '+fm(tb.price)+', subject to final due diligence.');
+  if(tb.price>D.low)rc.push('Their bid is '+((tb.price/D.low-1)*100).toFixed(1)+'% ('+fm(tb.price-D.low)+') above the lowest compliant bid; the premium is supported by stronger non-price scores (technical, experience, schedule, warranty).');
+  else rc.push('They are also the lowest compliant bid, so the recommendation is supported on both price and quality.');
+  if(rk[1]&&t.tot-rk[1].tot<5)rc.push('<span class="warn">Margin to second place is under 5 points.</span> Hold clarification meetings or interviews and verify references before award.');
+  if(x[2]<6)rc.push('Weakest area for the recommended bidder is <b>'+esc(x[1])+'</b> ('+x[2]+'/10). Address it with a written clarification or contract condition.');
+  var miss=0,tsc=0;bd.forEach(function(b){crit.forEach(function(c,i){tsc++;if(!(b.r[i]||'').trim())miss++})});
+  if(miss)rc.push('<span class="warn">'+miss+' of '+tsc+' scores have no written reason.</span> Record a reason for every score so the evaluation can be defended in a debrief or review.');
+  var cheap=rk.slice().sort(function(a,b){return bd[a.j].price-bd[b.j].price})[0];
+  if(cheap&&cheap!==t)rc.push('Lowest compliant bid ('+esc(bd[cheap.j].name)+') scored '+cheap.pct.toFixed(1)+'%. Document why it was not selected (scope gaps, limited experience, schedule or safety risk).');
+ }
+ R.forEach(function(r){var b=bd[r.j];if(b.price>0){var pa=(b.price/D.avg-1)*100;
+  if(pa<-15)rc.push('<span class="bad">'+esc(b.name)+'</span> is '+Math.abs(pa).toFixed(0)+'% below average: check for scope omissions, unbalanced pricing or an abnormally low bid.');
+  if(pa>15)rc.push(esc(b.name)+' is '+pa.toFixed(0)+'% above average: request a price breakdown if still in contention.')}});
+ if(D.tw!=100)rc.push('<span class="warn">Weights total '+D.tw+', not 100. Percentages still scale correctly, but confirm against the tender document.</span>');
+ rc.push('Next steps: confirm references and bonding with the issuer, verify arithmetic on the bid forms, obtain legal/procurement review, then issue the award recommendation.');
+ $('rec').innerHTML='<ul>'+rc.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>';
+}
+
+function addB(){if(bd.length>=8)return;bd.push({name:'Bidder '+String.fromCharCode(65+bd.length),price:0,days:0,warr:0,yrs:0,sim:0,refs:0,lti:0,pay:'',sec:1,add:1,ins:1,bond:1,form:1,s:crit.map(function(){return 5})});var nb=bd[bd.length-1];fields.forEach(function(f){nb[f.k]=f.t=='num'?0:''});mand.forEach(function(m){nb[m.k]=1});build()}
+function remB(){if(bd.length<=2)return;bd.pop();build()}
+function lbl(a,i,v){return '<div style="display:flex;gap:4px;min-width:210px"><input value="'+esc(v)+'" oninput="rn(\''+a+'\','+i+',this.value)"><button class="x" onclick="del(\''+a+'\','+i+')" title="Remove item">×</button></div>'}
+function A(a){return a=='fields'?fields:a=='mand'?mand:crit}
+function rn(a,i,v){A(a)[i][a=='crit'?'n':'l']=v;upd()}
+function del(a,i){A(a).splice(i,1);if(a=='crit')bd.forEach(function(b){b.s.splice(i,1);if(b.r)b.r.splice(i,1)});build()}
+function addF(isNum){var k='f'+Date.now();fields.push({k:k,l:isNum?'New number item':'New text item',t:isNum?'num':'txt'});bd.forEach(function(b){b[k]=isNum?0:''});build()}
+function addM(){var k='m'+Date.now();mand.push({k:k,l:'New requirement'});bd.forEach(function(b){b[k]=1});build()}
+function addC(){crit.push({n:'New criterion',w:5});bd.forEach(function(b){b.s.push(5)});build()}
+function b64(u){var s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+function ub64(t){var s=atob(t),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
+async function dkey(p,salt){var m=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:600000,hash:'SHA-256'},m,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+function msg(t,bad){var e=$('sm');e.textContent=t;e.className=bad?'bad':'ok'}
+function pw(){var p=$('pp').value;if(p.length<12){msg('Use a passphrase of at least 12 characters.',1);return null}return p}
+async function encData(){var p=pw();if(!p)return;try{var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));var k=await dkey(p,salt);var ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,new TextEncoder().encode(JSON.stringify({fields:fields,mand:mand,crit:crit,wP:wP,bd:bd}))));var all=new Uint8Array(28+ct.length);all.set(salt,0);all.set(iv,16);all.set(ct,28);$('bx').value='BCv1:'+b64(all);msg('Encrypted. Copy the text below and store it safely. It cannot be recovered without the passphrase.')}catch(e){msg('Encryption is not available in this browser.',1)}}
+async function decData(){var p=pw();if(!p)return;try{var t=$('bx').value.trim();if(t.indexOf('BCv1:')!=0)throw 0;var a=ub64(t.slice(5));var k=await dkey(p,a.slice(0,16));var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},k,a.slice(28));var o=JSON.parse(new TextDecoder().decode(pt));fields=o.fields;mand=o.mand;crit=o.crit;wP=o.wP;bd=o.bd;build();msg('Decrypted and loaded.')}catch(e){msg('Could not decrypt: wrong passphrase or damaged text.',1)}}
+function wipe(){$('bx').value='';$('pp').value='';location.reload()}
+build();
+</script>
+</body>
+</html>
